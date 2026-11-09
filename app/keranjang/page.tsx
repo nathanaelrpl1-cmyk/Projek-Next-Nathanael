@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
-import { menu, rupiah, type Menu } from "@/data/menu";
+import { useState } from "react";
+import { menu, rupiah } from "@/data/menu";
 import Link from "next/link";
 
 type ItemKeranjang = {
@@ -9,31 +9,28 @@ type ItemKeranjang = {
 };
 
 export default function HalamanKeranjang() {
-  const [keranjang, setKeranjang] = useState<ItemKeranjang[]>([]);
+  // Inisialisasi state langsung dari localStorage
+  const [keranjang, setKeranjang] = useState<ItemKeranjang[]>(() => {
+    if (typeof window === "undefined") return [];
+    return JSON.parse(localStorage.getItem("keranjang") || "[]");
+  });
+
   const [kodePromo, setKodePromo] = useState("");
   const [diskonAktif, setDiskonAktif] = useState(false);
   const [pesanPromo, setPesanPromo] = useState("");
   
-  const [caraAmbil, setCaraAmbil] = useState("sendiri"); // 'sendiri' atau 'diantar'
+  const [caraAmbil, setCaraAmbil] = useState("sendiri");
   const [namaPemesan, setNamaPemesan] = useState("");
   const [kelas, setKelas] = useState("");
   const [struk, setStruk] = useState<string | null>(null);
   const [errorForm, setErrorForm] = useState("");
 
-  // Ambil data keranjang dari localStorage saat pertama kali dimuat
-  useEffect(() => {
-    const data = JSON.parse(localStorage.getItem("keranjang") || "[]");
-    setKeranjang(data);
-  }, []);
-
-  // Fungsi helper untuk menyimpan dan memicu event navbar
   const simpanKeStorage = (dataBaru: ItemKeranjang[]) => {
     setKeranjang(dataBaru);
     localStorage.setItem("keranjang", JSON.stringify(dataBaru));
     window.dispatchEvent(new Event("keranjang-berubah"));
   };
 
-  // Ubah jumlah item (+ atau -)
   const ubahJumlah = (id: number, delta: number) => {
     const itemMenu = menu.find((m) => m.id === id);
     if (!itemMenu) return;
@@ -41,9 +38,7 @@ export default function HalamanKeranjang() {
     const dataBaru = keranjang.map((item) => {
       if (item.id === id) {
         const jumlahBaru = item.jumlah + delta;
-        // Validasi: tidak boleh kurang dari 1 atau melebihi stok
-        if (jumlahBaru < 1) return item;
-        if (jumlahBaru > itemMenu.stok) return item;
+        if (jumlahBaru < 1 || jumlahBaru > itemMenu.stok) return item;
         return { ...item, jumlah: jumlahBaru };
       }
       return item;
@@ -52,27 +47,22 @@ export default function HalamanKeranjang() {
     simpanKeStorage(dataBaru);
   };
 
-  // Hapus baris item
   const hapusItem = (id: number) => {
     const dataBaru = keranjang.filter((item) => item.id !== id);
     simpanKeStorage(dataBaru);
   };
 
-  // Hitung Subtotal
   const subtotal = keranjang.reduce((total, item) => {
     const itemMenu = menu.find((m) => m.id === item.id);
     return total + (itemMenu ? itemMenu.harga * item.jumlah : 0);
   }, 0);
 
-  // Validasi otomatis diskon jika subtotal turun di bawah Rp 20.000 (Langkah 12)
-  useEffect(() => {
-    if (subtotal < 20000 && diskonAktif) {
-      setDiskonAktif(false);
-      setPesanPromo("Subtotal di bawah Rp 20.000, diskon otomatis tidak berlaku lagi.");
-    }
-  }, [subtotal, diskonAktif]);
+  // Validasi diskon otomatis berdasarkan nilai subtotal tanpa useEffect setState
+  const isDiskonValid = diskonAktif && subtotal >= 20000;
+  const nilaiDiskon = isDiskonValid ? Math.round(subtotal * 0.1) : 0;
+  const ongkir = caraAmbil === "diantar" ? 2000 : 0;
+  const totalBayar = subtotal - nilaiDiskon + ongkir;
 
-  // Tombol Pakai Promo (Langkah 12)
   const handlePakaiPromo = () => {
     setPesanPromo("");
     const kodeClean = kodePromo.trim().toUpperCase();
@@ -98,12 +88,6 @@ export default function HalamanKeranjang() {
     setPesanPromo("Promo HEMAT10 dipakai: diskon 10%.");
   };
 
-  // Hitung Nilai Diskon (Dibulatkan dengan Math.round)
-  const nilaiDiskon = diskonAktif ? Math.round(subtotal * 0.1) : 0;
-  const ongkir = caraAmbil === "diantar" ? 2000 : 0;
-  const totalBayar = subtotal - nilaiDiskon + ongkir;
-
-  // Tombol Pesan Sekarang (Langkah 14)
   const handlePesanSekarang = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorForm("");
@@ -118,7 +102,6 @@ export default function HalamanKeranjang() {
       return;
     }
 
-    // Susun Rincian Pesanan untuk Struk & Riwayat
     const rincianItem = keranjang.map((item) => {
       const m = menu.find((x) => x.id === item.id);
       return `${m?.nama} x${item.jumlah} = ${rupiah((m?.harga || 0) * item.jumlah)}`;
@@ -126,7 +109,6 @@ export default function HalamanKeranjang() {
 
     const teksPengiriman = caraAmbil === "diantar" ? `Diantar ke ${kelas}: Rp 2.000` : "Diambil sendiri di kantin";
     
-    // Simpan ke Riwayat di localStorage
     const riwayatLama = JSON.parse(localStorage.getItem("riwayat") || "[]");
     const pesananBaru = {
       tanggal: new Date().toLocaleString("id-ID"),
@@ -144,17 +126,15 @@ export default function HalamanKeranjang() {
     };
     localStorage.setItem("riwayat", JSON.stringify([pesananBaru, ...riwayatLama]));
 
-    // Buat Struk Tampilan
     const strukText = `Terima kasih, ${namaPemesan}!\n` +
       rincianItem.join("\n") +
       `\nSubtotal: ${rupiah(subtotal)}` +
-      (diskonAktif ? `\nDiskon (10%): -${rupiah(nilaiDiskon)}` : "") +
+      (isDiskonValid ? `\nDiskon (10%): -${rupiah(nilaiDiskon)}` : "") +
       `\nPengiriman: ${teksPengiriman}` +
       `\nTotal bayar: ${rupiah(totalBayar)}`;
 
     setStruk(strukText);
 
-    // Kosongkan keranjang & reset form (Langkah 14)
     localStorage.removeItem("keranjang");
     setKeranjang([]);
     setKodePromo("");
@@ -197,7 +177,6 @@ export default function HalamanKeranjang() {
     <div className="mx-auto max-w-3xl space-y-6">
       <h1 className="text-3xl font-bold text-slate-900">Keranjang Belanja</h1>
 
-      {/* Tabel Item Keranjang */}
       <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -233,7 +212,6 @@ export default function HalamanKeranjang() {
         </table>
       </div>
 
-      {/* Bagian Promo (Langkah 12) */}
       <div className="rounded-xl border bg-white p-5 shadow-sm space-y-3">
         <h3 className="font-semibold text-slate-800">Punya Kode Promo?</h3>
         <div className="flex gap-3">
@@ -251,12 +229,11 @@ export default function HalamanKeranjang() {
         {pesanPromo && <p className="text-xs font-medium text-blue-600">{pesanPromo}</p>}
       </div>
 
-      {/* Ringkasan & Form Pemesanan (Langkah 13 & 14) */}
       <div className="rounded-xl border bg-white p-6 shadow-sm space-y-4">
         <h3 className="text-lg font-semibold text-slate-900">Rincian Pembayaran</h3>
         <div className="space-y-1.5 text-sm text-slate-600">
           <div className="flex justify-between"><span>Subtotal</span><span>{rupiah(subtotal)}</span></div>
-          {diskonAktif && <div className="flex justify-between text-green-600"><span>Diskon (10%)</span><span>-{rupiah(nilaiDiskon)}</span></div>}
+          {isDiskonValid && <div className="flex justify-between text-green-600"><span>Diskon (10%)</span><span>-{rupiah(nilaiDiskon)}</span></div>}
           <div className="flex justify-between"><span>Ongkir</span><span>{rupiah(ongkir)}</span></div>
           <div className="flex justify-between text-base font-bold text-slate-900 border-t pt-2"><span>Total</span><span>{rupiah(totalBayar)}</span></div>
         </div>

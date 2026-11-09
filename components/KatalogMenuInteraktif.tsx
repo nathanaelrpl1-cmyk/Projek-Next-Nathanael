@@ -7,17 +7,15 @@ import KontrolMenu from "./KontrolMenu";
 export default function KatalogMenuInteraktif({ daftarMenu }: { daftarMenu: Menu[] }) {
   const [cari, setCari] = useState("");
   const [kategori, setKategori] = useState("Semua");
-  const [urut, setUrut] = useState("awal");
+  
+  const [urut, setUrut] = useState(() => {
+    if (typeof window === "undefined") return "awal";
+    return localStorage.getItem("urutMenu") || "awal";
+  });
+
   const [jumlahTampil, setJumlahTampil] = useState(4);
   const [hanyaAdaStok, setHanyaAdaStok] = useState(false);
   const [hargaMaksimal, setHargaMaksimal] = useState("");
-
-  useEffect(() => {
-    const savedUrut = localStorage.getItem("urutMenu");
-    if (savedUrut) {
-      setUrut(savedUrut);
-    }
-  }, []);
 
   useEffect(() => {
     localStorage.setItem("urutMenu", urut);

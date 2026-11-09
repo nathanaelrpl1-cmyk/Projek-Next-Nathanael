@@ -13,20 +13,26 @@ const menu = [
 
 function NavContent() {
   const pathname = usePathname();
-  const [jumlahKeranjang, setJumlahKeranjang] = useState(0);
-
-  const hitungTotalItem = () => {
+  const [jumlahKeranjang, setJumlahKeranjang] = useState(() => {
+    if (typeof window === "undefined") return 0;
     try {
       const data = JSON.parse(localStorage.getItem("keranjang") || "[]");
-      const total = data.reduce((acc: number, item: { jumlah: number }) => acc + item.jumlah, 0);
-      setJumlahKeranjang(total);
+      return data.reduce((acc: number, item: { jumlah: number }) => acc + item.jumlah, 0);
     } catch {
-      setJumlahKeranjang(0);
+      return 0;
     }
-  };
+  });
 
   useEffect(() => {
-    hitungTotalItem();
+    const hitungTotalItem = () => {
+      try {
+        const data = JSON.parse(localStorage.getItem("keranjang") || "[]");
+        const total = data.reduce((acc: number, item: { jumlah: number }) => acc + item.jumlah, 0);
+        setJumlahKeranjang(total);
+      } catch {
+        setJumlahKeranjang(0);
+      }
+    };
 
     window.addEventListener("keranjang-berubah", hitungTotalItem);
     return () => {

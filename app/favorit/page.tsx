@@ -5,16 +5,17 @@ import KartuMenu from "@/components/KartuMenu";
 
 export default function HalamanFavorit() {
   const [menuList, setMenuList] = useState<Menu[]>([]);
-  const [favoritIds, setFavoritIds] = useState<number[]>([]);
   const [memuat, setMemuat] = useState(true);
   const [galat, setGalat] = useState("");
 
-  useEffect(() => {
-    // Ambil daftar ID favorit dari localStorage
-    const favs = JSON.parse(localStorage.getItem("favorit") || "[]");
-    setFavoritIds(favs);
+  // Inisialisasi state langsung dari localStorage untuk menghindari useEffect setState
+  const [favoritIds] = useState<number[]>(() => {
+    if (typeof window === "undefined") return [];
+    return JSON.parse(localStorage.getItem("favorit") || "[]");
+  });
 
-    // Ambil data menu dari API Route yang sudah dibuat
+  useEffect(() => {
+    // Ambil data menu dari API Route
     fetch("/api/menu")
       .then((res) => {
         if (!res.ok) throw new Error("Gagal memuat data menu dari server.");
@@ -38,7 +39,6 @@ export default function HalamanFavorit() {
     return <p className="text-center py-16 text-red-600 font-semibold">{galat}</p>;
   }
 
-  // Saring menu yang ID-nya ada di dalam daftar favorit
   const menuFavorit = menuList.filter((m) => favoritIds.includes(m.id));
 
   if (menuFavorit.length === 0) {
