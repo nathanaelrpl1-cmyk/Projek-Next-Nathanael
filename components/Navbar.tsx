@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
 
 const menu = [
     { href: "/", teks: "Beranda"},
@@ -13,12 +13,35 @@ const menu = [
 
 function NavContent() {
   const pathname = usePathname();
+  const [jumlahKeranjang, setJumlahKeranjang] = useState(0);
+
+  const hitungTotalItem = () => {
+    try {
+      const data = JSON.parse(localStorage.getItem("keranjang") || "[]");
+      const total = data.reduce((acc: number, item: { jumlah: number }) => acc + item.jumlah, 0);
+      setJumlahKeranjang(total);
+    } catch {
+      setJumlahKeranjang(0);
+    }
+  };
+
+  useEffect(() => {
+    hitungTotalItem();
+
+    window.addEventListener("keranjang-berubah", hitungTotalItem);
+    return () => {
+      window.removeEventListener("keranjang-berubah", hitungTotalItem);
+    };
+  }, []);
+
   return (
     <nav className="flex items-center justify-between shadow-sm bg-slate-50 px-8 py-4 rounded-b-[2rem] border-b border-slate-200">
       <span className="text-xl font-bold text-black">Kantinku</span>
       <div className="flex items-center gap-6">
         {menu.map((m) => {
           const aktif = pathname === m.href;
+          const adalahKeranjang = m.href === "/keranjang";
+
           return (
             <Link
               key={m.href}
@@ -30,6 +53,12 @@ function NavContent() {
               }`}
             >
               {m.teks}
+              {adalahKeranjang && jumlahKeranjang > 0 && (
+                <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${
+                  aktif ? "bg-white text-blue-600" : "bg-blue-600 text-white"}`}>
+                    {jumlahKeranjang}
+                  </span>
+              )}
             </Link>
           );
         })}
