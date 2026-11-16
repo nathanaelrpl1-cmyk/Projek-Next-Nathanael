@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { rupiah } from "@/data/menu";
 import Link from "next/link";
 
@@ -16,11 +16,27 @@ type Pesanan = {
 };
 
 export default function HalamanRiwayat() {
-  // Inisialisasi state langsung dari localStorage
-  const [riwayat] = useState<Pesanan[]>(() => {
-    if (typeof window === "undefined") return [];
-    return JSON.parse(localStorage.getItem("riwayat") || "[]");
-  });
+  const [riwayat, setRiwayat] = useState<Pesanan[]>([]);
+  const [sudahMuat, setSudahMuat] = useState(false);
+
+  useEffect(() => {
+    const data = JSON.parse(localStorage.getItem("riwayat") || "[]");
+    setRiwayat(data);
+    setSudahMuat(true);
+  }, []);
+
+  const handleHapusRiwayat = () => {
+    const konfirmasi = window.confirm("Apakah Anda yakin ingin menghapus seluruh riwayat pesanan?");
+    if (konfirmasi) {
+      localStorage.removeItem("riwayat");
+      setRiwayat([]);
+    }
+  };
+
+  // Selama belum dimuat di client, tampilkan kosong/loading agar sama dengan server
+  if (!sudahMuat) {
+    return <p className="text-center py-16 text-slate-500">Memuat riwayat...</p>;
+  }
 
   const totalBelanjaSemua = riwayat.reduce((acc, curr) => acc + curr.total, 0);
 
@@ -38,7 +54,15 @@ export default function HalamanRiwayat() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-3xl font-bold text-slate-900">Riwayat Pesanan</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-slate-900">Riwayat Pesanan</h1>
+        <button
+          onClick={handleHapusRiwayat}
+          className="rounded-lg bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 transition-colors"
+        >
+          Hapus Riwayat
+        </button>
+      </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm flex justify-between items-center text-sm font-medium text-slate-700">
         <span>Total Pesanan: <strong>{riwayat.length} pesanan</strong></span>

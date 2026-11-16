@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { menu, rupiah } from "@/data/menu";
 import Link from "next/link";
 
@@ -9,11 +9,18 @@ type ItemKeranjang = {
 };
 
 export default function HalamanKeranjang() {
-  // Inisialisasi state langsung dari localStorage
-  const [keranjang, setKeranjang] = useState<ItemKeranjang[]>(() => {
-    if (typeof window === "undefined") return [];
-    return JSON.parse(localStorage.getItem("keranjang") || "[]");
-  });
+  const [keranjang, setKeranjang] = useState<ItemKeranjang[]>([]);
+  const [sudahMuat, setSudahMuat] = useState(false);
+
+  useEffect(() => {
+    try {
+      const data = JSON.parse(localStorage.getItem("keranjang") || "[]");
+      setKeranjang(data);
+    } catch {
+      setKeranjang([]);
+    }
+    setSudahMuat(true);
+  }, []);
 
   const [kodePromo, setKodePromo] = useState("");
   const [diskonAktif, setDiskonAktif] = useState(false);
@@ -57,7 +64,6 @@ export default function HalamanKeranjang() {
     return total + (itemMenu ? itemMenu.harga * item.jumlah : 0);
   }, 0);
 
-  // Validasi diskon otomatis berdasarkan nilai subtotal tanpa useEffect setState
   const isDiskonValid = diskonAktif && subtotal >= 20000;
   const nilaiDiskon = isDiskonValid ? Math.round(subtotal * 0.1) : 0;
   const ongkir = caraAmbil === "diantar" ? 2000 : 0;
@@ -107,7 +113,7 @@ export default function HalamanKeranjang() {
       return `${m?.nama} x${item.jumlah} = ${rupiah((m?.harga || 0) * item.jumlah)}`;
     });
 
-    const teksPengiriman = caraAmbil === "diantar" ? `Diantar ke ${kelas}: Rp 2.000` : "Diambil sendiri di kantin";
+    const teksPengiriman = caraAmbil === "diantar" ? `Diantar ke ${kelas}: Rp 2.000` : "Ambil sendiri di kantin";
     
     const riwayatLama = JSON.parse(localStorage.getItem("riwayat") || "[]");
     const pesananBaru = {
@@ -143,6 +149,11 @@ export default function HalamanKeranjang() {
     setKelas("");
     window.dispatchEvent(new Event("keranjang-berubah"));
   };
+
+  // Tampilkan loading saat proses mounting untuk menghindari selisih HTML server & client
+  if (!sudahMuat) {
+    return <p className="text-center py-16 text-slate-500">Memuat keranjang...</p>;
+  }
 
   if (struk) {
     return (

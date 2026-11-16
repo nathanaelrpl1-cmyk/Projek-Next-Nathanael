@@ -13,17 +13,12 @@ const menu = [
 
 function NavContent() {
   const pathname = usePathname();
-  const [jumlahKeranjang, setJumlahKeranjang] = useState(() => {
-    if (typeof window === "undefined") return 0;
-    try {
-      const data = JSON.parse(localStorage.getItem("keranjang") || "[]");
-      return data.reduce((acc: number, item: { jumlah: number }) => acc + item.jumlah, 0);
-    } catch {
-      return 0;
-    }
-  });
+  const [jumlahKeranjang, setJumlahKeranjang] = useState(0);
+  const [sudahMuat, setSudahMuat] = useState(false);
 
   useEffect(() => {
+    setSudahMuat(true); // Menandakan komponen sudah aktif di client
+
     const hitungTotalItem = () => {
       try {
         const data = JSON.parse(localStorage.getItem("keranjang") || "[]");
@@ -34,6 +29,7 @@ function NavContent() {
       }
     };
 
+    hitungTotalItem();
     window.addEventListener("keranjang-berubah", hitungTotalItem);
     return () => {
       window.removeEventListener("keranjang-berubah", hitungTotalItem);
@@ -59,11 +55,12 @@ function NavContent() {
               }`}
             >
               {m.teks}
-              {adalahKeranjang && jumlahKeranjang > 0 && (
+              {/* Badge hanya dirender setelah client mounted untuk mencegah hydration mismatch */}
+              {sudahMuat && adalahKeranjang && jumlahKeranjang > 0 && (
                 <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${
                   aktif ? "bg-white text-blue-600" : "bg-blue-600 text-white"}`}>
                     {jumlahKeranjang}
-                  </span>
+                </span>
               )}
             </Link>
           );
