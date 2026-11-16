@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <div>
     <section className="py-12 text-center">
-      <h1 className="text-4xl font-bold">Selamat datang diKantinku</h1>
+      <h1 className="text-4xl font-bold">Selamat tinggal diKantinku</h1>
       <p className="mt-3 text-slate-600">
         Nikmati Camilan, Makanan, dan Minuman dikantin dengan cepat dan mudah
       </p>
